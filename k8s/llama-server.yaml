@@ -1,0 +1,81 @@
+# llama-server — llama.cpp HTTP inference server
+# Serves a local GGUF model via an OpenAI-compatible API at :8080/v1
+#
+# Model is loaded from a hostPath directory on the node.
+# Download the model to that directory before deploying (see README).
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-server
+  # Change to your namespace
+  namespace: ai-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llama-server
+  template:
+    metadata:
+      labels:
+        app: llama-server
+    spec:
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server
+          args:
+            - -m
+            # Update this path to match the filename of your downloaded model
+            - /models/Phi-3.5-mini-instruct-Q4_K_M.gguf
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8080"
+            - --ctx-size
+            - "4096"
+            - --n-predict
+            - "1024"
+            - --parallel
+            - "1"
+            - --log-disable
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              # Set to ~1.5–2× the model size in RAM
+              memory: 6Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: models
+          hostPath:
+            # Directory on the k8s node containing GGUF model files
+            # Must exist before deploying — see README for setup
+            path: /srv/ai-models
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama-server
+  namespace: ai-inference
+spec:
+  selector:
+    app: llama-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

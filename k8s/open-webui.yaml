@@ -1,0 +1,95 @@
+# open-webui — ChatGPT-like UI backed by llama-server
+# Connects to the local llama-server via the OpenAI-compatible API.
+# Persistent chat history and uploaded RAG files are stored on a PVC.
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui-data
+  # Change to your namespace
+  namespace: ai-inference
+spec:
+  # k3s default StorageClass — change if using a different provisioner
+  storageClassName: local-path
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 15Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: ai-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      containers:
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:v0.8.12
+          ports:
+            - containerPort: 8080
+          env:
+            # Points to llama-server in the same namespace
+            # Adjust the service name and namespace if deploying separately
+            - name: OPENAI_API_BASE_URL
+              value: http://llama-server.ai-inference.svc:8080/v1
+            # llama-server does not require a real API key
+            - name: OPENAI_API_KEY
+              value: sk-no-key
+            # Secret key for Open WebUI session signing — use a real random value
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-webui-secrets
+                  key: secret-key
+            # Set to "true" to require Open WebUI's own login
+            # Set to "false" if you're fronting with an external auth proxy
+            - name: WEBUI_AUTH
+              value: "false"
+            - name: ENABLE_RAG_WEB_SEARCH
+              value: "false"
+            - name: RAG_EMBEDDING_ENGINE
+              value: ""
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 1500Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-webui-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: ai-inference
+spec:
+  selector:
+    app: open-webui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
