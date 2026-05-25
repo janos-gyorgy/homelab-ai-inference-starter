@@ -1,0 +1,30 @@
+# prometheus-scrape.yaml — Prometheus static scrape config for llama-server
+#
+# Add the content of extraScrapeConfigs to your Prometheus configuration.
+# If using kube-prometheus-stack, use a ServiceMonitor instead.
+# If using the plain prometheus chart (as in this project), add to extraScrapeConfigs.
+#
+# Network policy note: if your namespaces are isolated, allow inbound connections
+# from the Prometheus namespace to the llama-server namespace on port 8080.
+
+# ── prometheus chart values snippet ──────────────────────────────────────────
+# prometheus:
+#   extraScrapeConfigs: |
+#     - job_name: llama-server
+#       static_configs:
+#         - targets:
+#             - llama-server.<your-namespace>.svc:8080
+#       metrics_path: /metrics
+
+# ── Available metrics (verified against live endpoint) ───────────────────────
+#
+# llamacpp:prompt_tokens_total          counter   input tokens processed
+# llamacpp:tokens_predicted_total       counter   output tokens generated
+# llamacpp:prompt_tokens_seconds        gauge     prompt throughput (tok/s)
+# llamacpp:predicted_tokens_seconds     gauge     generation throughput (tok/s)
+# llamacpp:tokens_predicted_seconds_total counter total time generating (s)
+# llamacpp:prompt_seconds_total         counter   total time on prompts (s)
+# llamacpp:requests_processing          gauge     requests currently running
+# llamacpp:requests_deferred            gauge     requests queued, waiting
+# llamacpp:n_decode_total               counter   total llama_decode() calls
+# llamacpp:n_busy_slots_per_decode      counter   busy slots per decode call

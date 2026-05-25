@@ -38,6 +38,7 @@ spec:
             - "1024"
             - --parallel
             - "1"
+            - --metrics      # enables Prometheus endpoint at :8080/metrics
             - --log-disable
           ports:
             - containerPort: 8080

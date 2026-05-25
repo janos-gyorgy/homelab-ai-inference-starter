@@ -1,0 +1,139 @@
+# grafana-dashboard.yaml — LLM metrics dashboard for Grafana
+#
+# Loaded automatically by the Grafana sidecar when label grafana_dashboard=1
+# is present. Works across namespaces — deploy this ConfigMap anywhere the
+# sidecar can reach (all namespaces by default).
+#
+# Metric names are verified against the live llama-server /metrics endpoint.
+# Requires Prometheus to scrape llama-server — see prometheus-scrape.yaml.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-llm
+  namespace: ai-inference
+  labels:
+    grafana_dashboard: "1"   # picked up by Grafana sidecar
+data:
+  llm-metrics.json: |
+    {
+      "title": "LLM Metrics",
+      "uid": "llm-metrics",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "30s",
+      "time": {"from": "now-1h", "to": "now"},
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Throughput — tokens/s",
+          "id": 1,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:predicted_tokens_seconds",
+              "legendFormat": "output (generation)",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:prompt_tokens_seconds",
+              "legendFormat": "input (prompt)",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "short", "custom": {"lineWidth": 2}}}
+        },
+        {
+          "type": "timeseries",
+          "title": "Cumulative tokens",
+          "id": 2,
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:prompt_tokens_total",
+              "legendFormat": "prompt tokens",
+              "refId": "A"
+            },
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:tokens_predicted_total",
+              "legendFormat": "generated tokens",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "type": "timeseries",
+          "title": "Generation latency (ms/token)",
+          "id": 3,
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "rate(llamacpp:tokens_predicted_seconds_total[5m]) / rate(llamacpp:tokens_predicted_total[5m]) * 1000",
+              "legendFormat": "ms/token",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "ms"}}
+        },
+        {
+          "type": "stat",
+          "title": "Requests in flight",
+          "id": 4,
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:requests_processing",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "type": "stat",
+          "title": "Requests deferred",
+          "id": 5,
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:requests_deferred",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "none"},
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        },
+        {
+          "type": "stat",
+          "title": "Total decode calls",
+          "id": 6,
+          "gridPos": {"h": 4, "w": 12, "x": 12, "y": 12},
+          "datasource": {"type": "prometheus"},
+          "targets": [
+            {
+              "datasource": {"type": "prometheus"},
+              "expr": "llamacpp:n_decode_total",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "graphMode": "area"},
+          "fieldConfig": {"defaults": {"unit": "short"}}
+        }
+      ]
+    }

@@ -101,12 +101,34 @@ kubectl apply -f k8s/ingress.yaml
 
 ```
 k8s/
-├── llama-server.yaml      # llama.cpp Deployment + Service
+├── llama-server.yaml      # llama.cpp Deployment + Service (--metrics enabled)
 ├── open-webui.yaml        # Open WebUI Deployment + PVC + Service
 ├── secret.yaml            # Secret setup options (plain kubectl)
 ├── external-secret.yaml   # ESO + Vault alternative for the secret
-└── ingress.yaml           # Traefik / nginx / NodePort ingress options
+├── ingress.yaml           # Traefik / nginx / NodePort ingress options
+├── grafana-dashboard.yaml # Grafana dashboard ConfigMap (auto-loaded by sidecar)
+└── prometheus-scrape.yaml # Prometheus scrape config snippet + metric reference
 ```
+
+## Metrics
+
+llama-server exposes a Prometheus metrics endpoint at `:8080/metrics` — enabled by the `--metrics` flag already present in `k8s/llama-server.yaml`.
+
+Key metrics:
+
+| Metric | Type | What it shows |
+|--------|------|---------------|
+| `llamacpp:predicted_tokens_seconds` | gauge | Generation throughput (tok/s) |
+| `llamacpp:tokens_predicted_total` | counter | Total output tokens (cumulative) |
+| `llamacpp:prompt_tokens_total` | counter | Total input tokens (cumulative) |
+| `llamacpp:requests_processing` | gauge | Requests currently running |
+| `llamacpp:requests_deferred` | gauge | Requests queued, waiting for a slot |
+
+**Grafana dashboard:** apply `k8s/grafana-dashboard.yaml`. If your Grafana uses the sidecar pattern with `label: grafana_dashboard`, the dashboard loads automatically. Otherwise import the JSON from the ConfigMap data directly.
+
+**Prometheus scrape config:** see `k8s/prometheus-scrape.yaml` for the config snippet and the full metric list.
+
+**Network policy note:** if your namespaces are isolated (Cilium, Calico), allow inbound connections from the Prometheus namespace to the llama-server namespace on port 8080.
 
 ## Configuration reference
 
