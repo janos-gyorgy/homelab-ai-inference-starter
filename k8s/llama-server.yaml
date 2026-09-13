@@ -23,7 +23,12 @@ spec:
     spec:
       containers:
         - name: llama-server
-          image: ghcr.io/ggml-org/llama.cpp:server
+          # Pinned by digest. `:server` is a MOVING tag — it was used unpinned here,
+          # which meant two people following this README could get different
+          # inference binaries and neither could reproduce the other's result.
+          # Resolved 2026-09-13; `docker buildx imagetools inspect
+          # ghcr.io/ggml-org/llama.cpp:server` gives the current one if you update.
+          image: ghcr.io/ggml-org/llama.cpp:server@sha256:cbcdcb52d484e08e23bfc0135afa5beadd2d540513bbb7c65b233231fa033ff4
           args:
             - -m
             # Update this path to match the filename of your downloaded model

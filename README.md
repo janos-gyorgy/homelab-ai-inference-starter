@@ -1,6 +1,14 @@
 # homelab-ai-inference-starter
 
-Kubernetes manifests for a self-hosted LLM inference stack: **llama.cpp** as the inference server (OpenAI-compatible API) and **Open WebUI** as the chat interface. Designed for a single-node k3s homelab but works on any Kubernetes cluster.
+Kubernetes manifests for a self-hosted LLM inference stack: **llama.cpp** as the inference server (OpenAI-compatible API) and **Open WebUI** as the chat interface. Designed for a **single-node** k3s homelab.
+
+It is not cluster-portable as written, and it would be dishonest to imply otherwise:
+the model is mounted from `hostPath: /srv/ai-models` and you put it there yourself
+over SSH, so on a multi-node cluster the pod must be pinned to the node holding the
+files (node affinity or a `nodeSelector`) or it will schedule somewhere the model
+does not exist. Making it genuinely portable means a real volume — an RWX
+PersistentVolume, or an init container that pulls the model — which is a different
+and larger piece of work than this repo does.
 
 ```
 ┌────────────────────────────────────────────┐
